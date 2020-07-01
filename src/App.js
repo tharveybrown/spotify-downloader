@@ -2,7 +2,8 @@ import React, { Component } from "react";
 import * as $ from "jquery";
 import { authEndpoint, clientId, redirectUri, scopes } from "./config";
 import hash from "./hash";
-import Player from "./Player";
+
+import Playlists from "./components/Playlists";
 import logo from "./logo.svg";
 import "./App.css";
 
@@ -11,21 +12,13 @@ class App extends Component {
     super();
     this.state = {
       token: null,
-      item: {
-        album: {
-          images: [{ url: "" }],
-        },
-        name: "",
-        artists: [{ name: "" }],
-        duration_ms: 0,
-      },
-      is_playing: "Paused",
-      progress_ms: 0,
-      no_data: false,
+      no_playlists: true,
+      no_tracks: true,
+      playlists: [],
     };
 
-    this.getCurrentlyPlaying = this.getCurrentlyPlaying.bind(this);
-    this.tick = this.tick.bind(this);
+    this.getPlaylists = this.getPlaylists.bind(this);
+    this.getItems = this.getItems.bind(this);
   }
 
   componentDidMount() {
@@ -37,28 +30,20 @@ class App extends Component {
       this.setState({
         token: _token,
       });
-      this.getCurrentlyPlaying(_token);
+      this.getPlaylists(_token);
+      this.getItems(_token);
     }
 
     // set interval for polling every 5 seconds
-    this.interval = setInterval(() => this.tick(), 5000);
   }
 
   componentWillUnmount() {
     // clear the interval to save resources
-    clearInterval(this.interval);
   }
 
-  tick() {
-    if (this.state.token) {
-      this.getCurrentlyPlaying(this.state.token);
-    }
-  }
-
-  getCurrentlyPlaying(token) {
-    // Make a call using the token
+  getPlaylists(token) {
     $.ajax({
-      url: "https://api.spotify.com/v1/me/player",
+      url: "https://api.spotify.com/v1/me/playlists",
       type: "GET",
       beforeSend: (xhr) => {
         xhr.setRequestHeader("Authorization", "Bearer " + token);
@@ -67,19 +52,63 @@ class App extends Component {
         // Checks if the data is not empty
         if (!data) {
           this.setState({
-            no_data: true,
+            no_playlists: true,
           });
           return;
         }
+        const keys_to_keep = ["id", "name", "tracks", "description"];
+        const redux = (array) =>
+          array.map((o) =>
+            keys_to_keep.reduce((acc, curr) => {
+              acc[curr] = o[curr];
+              return acc;
+            }, {})
+          );
+        let cleanedPlaylists = redux(data.items);
 
-        this.setState({
-          item: data.item,
-          is_playing: data.is_playing,
-          progress_ms: data.progress_ms,
-          no_data: false /* We need to "reset" the boolean, in case the
-                            user does not give F5 and has opened his Spotify. */,
-        });
+        this.setState(
+          {
+            playlists: cleanedPlaylists,
+          },
+          () => {
+            this.getItems(token);
+          }
+        );
       },
+    });
+  }
+
+  getItems(token) {
+    // GET https://api.spotify.com/v1/playlists/{playlist_id}/tracks
+    this.state.playlists.map((playlist, index) => {
+      $.ajax({
+        url: `https://api.spotify.com/v1/playlists/${playlist.id}/tracks`,
+        type: "GET",
+        beforeSend: (xhr) => {
+          xhr.setRequestHeader("Authorization", "Bearer " + token);
+        },
+        success: (data) => {
+          // Checks if the data is not empty
+          if (!data) {
+            this.setState({
+              no_tracks: true,
+            });
+            return;
+          }
+
+          let updatedPlaylists = [...this.state.playlists];
+          let item = { ...this.state.playlists[index] };
+          item.tracks = data.items;
+          updatedPlaylists[index] = item;
+
+          return this.setState({
+            playlists: updatedPlaylists,
+          });
+        },
+      });
+    });
+    this.setState({
+      no_playlists: false,
     });
   }
 
@@ -88,6 +117,8 @@ class App extends Component {
       <div className="App">
         <header className="App-header">
           <img src={logo} className="App-logo" alt="logo" />
+        </header>
+        <section>
           {!this.state.token && (
             <a
               className="btn btn--loginApp-link"
@@ -98,20 +129,17 @@ class App extends Component {
               Login to Spotify
             </a>
           )}
-          {this.state.token && !this.state.no_data && (
-            <Player
-              item={this.state.item}
-              is_playing={this.state.is_playing}
-              progress_ms={this.state.progress_ms}
-            />
+          {this.state.token && !this.state.no_playlists && (
+            <>
+              <Playlists playlists={this.state.playlists} />
+            </>
           )}
-          {this.state.no_data && (
-            <p>
-              You need to be playing a song on Spotify, for something to appear
-              here.
-            </p>
+          {this.state.token && this.state.no_playlists && (
+            <>
+              <p>no playlists!</p>
+            </>
           )}
-        </header>
+        </section>
       </div>
     );
   }

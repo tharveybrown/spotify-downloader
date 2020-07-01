@@ -4,19 +4,24 @@
 
 .App-logo {
   animation: App-logo-spin infinite 20s linear;
-  height: 40vmin;
+  height: 7vmin;
   pointer-events: none;
 }
 
 .App-header {
   background-color: #282c34;
-  min-height: 100vh;
+  height: 10vh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   font-size: calc(10px + 2vmin);
   color: white;
+}
+
+.btn--loginApp-link {
+  display: inline-flex;
+  margin-top: 50px;
 }
 
 .App-link {
@@ -44,8 +49,8 @@ body {
 }
 
 body {
-  background-color: #333;
-  color: #eee;
+  background-color: #eee;
+  color: black;
   font-family: Helvetica, Arial;
   font-size: 3vmin;
 }
