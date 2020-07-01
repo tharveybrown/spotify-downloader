@@ -31,7 +31,7 @@ class App extends Component {
         token: _token,
       });
       this.getPlaylists(_token);
-      this.getItems(_token);
+      // this.getItems(_token);
     }
 
     // set interval for polling every 5 seconds
@@ -56,7 +56,7 @@ class App extends Component {
           });
           return;
         }
-        const keys_to_keep = ["id", "name", "tracks", "description"];
+        const keys_to_keep = ["id", "name", "description"];
         const redux = (array) =>
           array.map((o) =>
             keys_to_keep.reduce((acc, curr) => {
@@ -65,23 +65,24 @@ class App extends Component {
             }, {})
           );
         let cleanedPlaylists = redux(data.items);
-
         this.setState(
           {
             playlists: cleanedPlaylists,
           },
-          () => {
-            this.getItems(token);
-          }
+
+          () => this.getItems(token)
         );
       },
+    }).then(() => {
+      this.setState({
+        no_playlists: false,
+      });
     });
   }
 
   getItems(token) {
-    // GET https://api.spotify.com/v1/playlists/{playlist_id}/tracks
-    this.state.playlists.map((playlist, index) => {
-      $.ajax({
+    const results = this.state.playlists.map((playlist, index) => {
+      return $.ajax({
         url: `https://api.spotify.com/v1/playlists/${playlist.id}/tracks`,
         type: "GET",
         beforeSend: (xhr) => {
@@ -90,9 +91,6 @@ class App extends Component {
         success: (data) => {
           // Checks if the data is not empty
           if (!data) {
-            this.setState({
-              no_tracks: true,
-            });
             return;
           }
 
@@ -101,15 +99,17 @@ class App extends Component {
           item.tracks = data.items;
           updatedPlaylists[index] = item;
 
-          return this.setState({
+          this.setState({
             playlists: updatedPlaylists,
           });
         },
       });
     });
-    this.setState({
-      no_playlists: false,
-    });
+    Promise.all(results).then(
+      this.setState({
+        no_tracks: false,
+      })
+    );
   }
 
   render() {
@@ -121,7 +121,7 @@ class App extends Component {
         <section>
           {!this.state.token && (
             <a
-              className="btn btn--loginApp-link"
+              className="btn btn-success btn--loginApp-link"
               href={`${authEndpoint}?client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scopes.join(
                 "%20"
               )}&response_type=token&show_dialog=true`}
@@ -129,7 +129,7 @@ class App extends Component {
               Login to Spotify
             </a>
           )}
-          {this.state.token && !this.state.no_playlists && (
+          {this.state.token && !this.state.no_tracks && (
             <>
               <Playlists playlists={this.state.playlists} />
             </>

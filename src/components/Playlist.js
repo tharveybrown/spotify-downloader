@@ -1,10 +1,32 @@
 import React from "react";
+import Track from "./Track";
 
-const Playlist = (props) => {
-  const { playlist } = props;
+function renderTracks(playlist) {
+  console.log(playlist);
+  if (playlist.tracks) {
+    playlist.tracks.map((track) => <Track track={track} id={playlist.id} />);
+  }
+}
+
+const Playlist = ({ playlist }) => {
   return (
-    <div>
-      <h3>{playlist.name}</h3>
+    <div id="accordion">
+      <div className="card">
+        <div class="card-header" id={playlist.id}>
+          <h5 class="mb-0">
+            <button
+              class="btn btn-link"
+              data-toggle="collapse"
+              data-target={`#${playlist.id}`}
+              aria-expanded="true"
+              aria-controls={playlist.id}
+            >
+              {playlist.name}
+            </button>
+          </h5>
+        </div>
+        {renderTracks(playlist)}
+      </div>
     </div>
   );
 };
